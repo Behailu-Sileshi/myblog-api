@@ -1,5 +1,7 @@
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import SAFE_METHODS, AllowAny, IsAuthenticated
+
+from blog.permissions import IsTheAuthor
 from .serializers import PostSerializer
 from .models import Author, Post
 
@@ -19,6 +21,7 @@ class PostViewSet(ModelViewSet):
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
             return [AllowAny()]
-        return [IsAuthenticated()]
+        return [IsTheAuthor()]
+    
     
     

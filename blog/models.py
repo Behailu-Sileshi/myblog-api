@@ -5,14 +5,10 @@ from django.utils.text import slugify
 from django.utils import timezone
 
 
-class User(AbstractUser):
-    email = models.EmailField(unique=True)
-
-
 class Author(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    image = models.ImageField(upload_to='users/profiles/')
-    bio = models.TextField()
+    image = models.ImageField(upload_to='users/profiles/', null=True, blank=True)
+    bio = models.TextField(blank=True, null=True)
     follows = models.ManyToManyField(
         'self',
         symmetrical=False,

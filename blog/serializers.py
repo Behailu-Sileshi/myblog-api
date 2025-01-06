@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Post
+from .models import Author, Post
 
 class PostSerializer(serializers.ModelSerializer):
     class Meta:
@@ -16,6 +16,7 @@ class PostSerializer(serializers.ModelSerializer):
                   'updated_at']
         read_only_fields = ['owner']
     def create(self, validated_data):
-        return Post.objects.create(owner=self.request.user, **validated_data)
+        author = Author.objects.get(user_id=self.context['user_id'])
+        return Post.objects.create(owner=author, **validated_data)
     
         
