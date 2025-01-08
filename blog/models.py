@@ -9,6 +9,8 @@ class Author(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     image = models.ImageField(upload_to='users/profiles/', null=True, blank=True)
     bio = models.TextField(blank=True, null=True)
+    follower_count = models.PositiveIntegerField(default=0)
+    following_count = models.PositiveIntegerField(default=0)
     follows = models.ManyToManyField(
         'self',
         symmetrical=False,
@@ -69,3 +71,4 @@ class Comment(models.Model):
 
     def is_reply(self):
         return self.parent is not None
+
