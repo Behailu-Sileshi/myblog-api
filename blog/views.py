@@ -4,17 +4,25 @@ from rest_framework.permissions import SAFE_METHODS, AllowAny, IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.filters import SearchFilter, OrderingFilter
+from django_filters.rest_framework import DjangoFilterBackend
+
+from .filters import PostFilter
 from .pagination import DefaultPaginationClass
 from .permissions import DenyPostDeleteExceptFollowUnfollow, DenyUpdateExceptMe, IsTheAuthor
-from .serializers import AuthorSerializer, PostSerializer, SimpleAuthorSerializer
-from .models import Author, Post
+from .serializers import AuthorSerializer, CommentSerializer, PostSerializer, SimpleAuthorSerializer
+from .models import Author, Comment, Post
 
 
 
 
 class AuthorViewSet(ModelViewSet):
-    queryset = Author.objects.prefetch_related('followed_by').all()
+    queryset = Author.objects.select_related('user').prefetch_related('followed_by').all()
     http_method_names = ['get', 'post', 'put', 'delete', 'option', 'head']
+    pagination_class = DefaultPaginationClass
+    filter_backends = [SearchFilter, OrderingFilter]
+    ordering_fields = ['follower_count', 'following_count']
+    search_fields = ['user__username', 'user__first_name', 'user__last_name']
    
 
     def get_permissions(self):
@@ -96,6 +104,10 @@ class AuthorViewSet(ModelViewSet):
     
 class PostViewSet(ModelViewSet):
     serializer_class = PostSerializer
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    ordering_fields = ['published_date', 'updated_at']
+    search_fields = ['title', 'body']
+    filterset_class = PostFilter
     
     def get_queryset(self):
         author = Author.objects.filter(user_id=self.request.user.id).first()
@@ -110,7 +122,34 @@ class PostViewSet(ModelViewSet):
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
             return [AllowAny()]
-        return [IsTheAuthor()]
+        return [IsAuthenticated(), IsTheAuthor()]
+
+
+
+class CommentViewSet(ModelViewSet):
+    serializer_class = CommentSerializer
+    filter_backends = [OrderingFilter]
+    ordering_fields = ['created_at']
+
+    def get_queryset(self):
+        author = Author.objects.filter(user_id=self.request.user.id).first()
+        queryset = Comment.objects\
+                                .select_related('owner', 'post', 'parent') \
+                                .prefetch_related('replies') \
+                                .all()
+        if self.action in ['list', 'retrieve']:
+            return queryset
+        return queryset.filter(owner=author)
+    
+    def get_permissions(self):
+        if self.request.method in SAFE_METHODS:
+            return [AllowAny()]
+        return [IsAuthenticated(), IsTheAuthor()]
+    
+    def get_serializer_context(self):
+        return {'post_id': self.kwargs['post_pk'],
+                'user_id': self.request.user.id}
+
     
 
 

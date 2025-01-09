@@ -33,7 +33,7 @@ class Post(models.Model):
     body = models.TextField()
     owner = models.ForeignKey(Author, on_delete=models.CASCADE, related_name='posts')
     status = models.CharField(max_length=1, choices=STATUS_CHOICES, default='D')
-    published_date = models.DateTimeField(null=True, blank=True)
+    published_date = models.DateTimeField(null=True, blank=True, )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -67,7 +67,7 @@ class Comment(models.Model):
     )
 
     def __str__(self):
-        return f"Comment by {self.owner.user.username} on {self.created_at}"
+        return f"Comment by {self.owner.user.username} on {self.created_at.strftime("%Y-%m-%d %H:%M:%S")}"
 
     def is_reply(self):
         return self.parent is not None
