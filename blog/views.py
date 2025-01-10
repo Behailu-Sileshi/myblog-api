@@ -1,10 +1,12 @@
 from django.db import transaction
+from django.shortcuts import get_object_or_404
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import SAFE_METHODS, AllowAny, IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.filters import SearchFilter, OrderingFilter
+from rest_framework.viewsets import ViewSet
 from django_filters.rest_framework import DjangoFilterBackend
 
 from .filters import PostFilter
@@ -12,6 +14,7 @@ from .pagination import DefaultPaginationClass
 from .permissions import DenyPostDeleteExceptFollowUnfollow, DenyUpdateExceptMe, IsTheAuthor
 from .serializers import AuthorSerializer, CommentSerializer, PostSerializer, SimpleAuthorSerializer
 from .models import Author, Comment, Post
+from blog import permissions
 
 
 
@@ -50,39 +53,6 @@ class AuthorViewSet(ModelViewSet):
             serializer.save()
             return Response(serializer.validated_data)
 
-    @action(detail=True, methods=['POST'], permission_classes=[IsAuthenticated])
-    def follow(self, request, pk=None):
-        with transaction.atomic():
-            author = self.get_object()
-            user_author = request.user.author
-            if author == user_author:
-                return Response({'status': "You can't follow yourself."}, status=status.HTTP_403_FORBIDDEN)
-            if not user_author.follows.filter(pk=author.pk).exists():
-                user_author.follows.add(author)
-                user_author.following_count += 1
-                author.follower_count += 1
-
-                user_author.save(update_fields=['following_count'])
-                author.save(update_fields=['follower_count'])
-
-                return Response({'status': 'followed'})
-            return Response({'status': 'already following'}, status=status.HTTP_409_CONFLICT)
-
-    @action(detail=True, methods=['GET', 'DELETE'], permission_classes=[IsAuthenticated])
-    def unfollow(self, request, pk=None):
-        with transaction.atomic():
-            author = self.get_object()
-            user_author = request.user.author
-            if user_author.follows.filter(pk=author.pk).exists():
-                user_author.follows.remove(author)
-                user_author.following_count -= 1
-                author.follower_count -= 1
-
-                user_author.save(update_fields=['following_count'])
-                author.save(update_fields=['follower_count'])
-
-                return Response({'status': 'unfollowed'})
-            return Response({'status': 'not following'}, status=status.HTTP_404_NOT_FOUND)
     
     @action(detail=True, methods=['get'])
     def followers(self, request, pk):
@@ -92,7 +62,7 @@ class AuthorViewSet(ModelViewSet):
         serializer = SimpleAuthorSerializer(result_page, many=True, context={'request': request})
         return paginator.get_paginated_response(serializer.data)
     
-    @action(detail=True, methods=['get'])
+    @action(detail=True, methods=['GET'])
     def followings(self, request, pk):
         author = self.get_object()
         paginator = DefaultPaginationClass()
@@ -150,8 +120,48 @@ class CommentViewSet(ModelViewSet):
         return {'post_id': self.kwargs['post_pk'],
                 'user_id': self.request.user.id}
 
-    
 
+class FollowViewSet(ViewSet):
+    permission_classes = [IsAuthenticated]
+    
+    @action(detail=True, methods=['post'], url_path='follows', permission_classes=[IsAuthenticated])
+    def follow(self, request, pk=None):
+        with transaction.atomic():
+            author_to_follow = get_object_or_404(Author, pk=pk)
+            user_author = request.user.author  # assuming `request.user` has a related `author` object
+
+            if author_to_follow == user_author:
+                return Response({'status': "You can't follow yourself."}, status=status.HTTP_403_FORBIDDEN)
+
+            if not user_author.follows.filter(pk=author_to_follow.pk).exists():
+                user_author.follows.add(author_to_follow)
+                user_author.following_count += 1
+                author_to_follow.follower_count += 1
+
+                user_author.save(update_fields=['following_count'])
+                author_to_follow.save(update_fields=['follower_count'])
+
+                return Response({'status': 'followed'}, status=status.HTTP_201_CREATED)
+
+            return Response({'status': 'already following'}, status=status.HTTP_409_CONFLICT)
+
+    @action(detail=True, methods=['delete'], url_path='unfollow', permission_classes=[IsAuthenticated])
+    def unfollow(self, request, pk=None):
+        with transaction.atomic():
+            author_to_unfollow = get_object_or_404(Author, pk=pk)
+            user_author = request.user.author
+
+            if user_author.follows.filter(pk=author_to_unfollow.pk).exists():
+                user_author.follows.remove(author_to_unfollow)
+                user_author.following_count -= 1
+                author_to_unfollow.follower_count -= 1
+
+                user_author.save(update_fields=['following_count'])
+                author_to_unfollow.save(update_fields=['follower_count'])
+
+                return Response({'status': 'unfollowed'}, status=status.HTTP_200_OK)
+
+            return Response({'status': 'not following'}, status=status.HTTP_404_NOT_FOUND)
 
 
 
