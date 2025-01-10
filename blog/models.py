@@ -1,13 +1,12 @@
 from django.db import models
-from django.contrib.auth.models import AbstractUser
+from django.core.validators import FileExtensionValidator
 from django.conf import settings
 from django.utils.text import slugify
 from django.utils import timezone
 
 
 class Author(models.Model):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    image = models.ImageField(upload_to='users/profiles/', null=True, blank=True)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='author')
     bio = models.TextField(blank=True, null=True)
     follower_count = models.PositiveIntegerField(default=0)
     following_count = models.PositiveIntegerField(default=0)
@@ -22,7 +21,11 @@ class Author(models.Model):
     def __str__(self):
         return self.user.username
 
-
+class ProfilePicture(models.Model):
+    author = models.ForeignKey(Author, on_delete=models.CASCADE, related_name='pictures')
+    image = models.ImageField(upload_to='users/profiles/', null=True, blank=True, default='users/profiles/default.png')
+    
+    
 class Post(models.Model):
     STATUS_CHOICES = [
         ('D', "Draft"),
@@ -52,6 +55,24 @@ class Post(models.Model):
 
     class Meta:
         ordering = ['-published_date', '-created_at']
+        
+class PostImage(models.Model):
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='images')
+    image = models.ImageField(upload_to='blog/post_images/')
+    caption = models.CharField(max_length=255, blank=True, null=True)
+    upload_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Image for {self.post.title}"
+
+class PostVideo(models.Model):
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='videos')
+    video = models.FileField(upload_to='blog/post_videos/', validators=[FileExtensionValidator(allowed_extensions=['mp4', 'mkv', 'avi', 'mov'])])
+    caption = models.CharField(max_length=255, blank=True, null=True)
+    upload_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Video for {self.post.title}"
 
 
 class Comment(models.Model):
