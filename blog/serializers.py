@@ -28,6 +28,7 @@ class AuthorSerializer(serializers.ModelSerializer):
                   'image',
                   'follower_count',
                   'following_count',
+                  'joined_at'
                  ]
         read_only_fields = ['user',
                             'follower_count',

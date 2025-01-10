@@ -17,6 +17,7 @@ class Author(models.Model):
         blank=True,
         related_name='followed_by'
     )
+    joined_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.user.username
