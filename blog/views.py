@@ -1,5 +1,6 @@
 from django.db import transaction
 from django.shortcuts import get_object_or_404
+from django.db.models import Count
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import SAFE_METHODS, AllowAny, IsAuthenticated
 from rest_framework.decorators import action
@@ -11,17 +12,18 @@ from django_filters.rest_framework import DjangoFilterBackend
 
 from .filters import PostFilter
 from .pagination import DefaultPaginationClass
-from .permissions import DenyPostDeleteExceptFollowUnfollow, DenyUpdateExceptMe, IsTheAuthor
-from .serializers import AuthorSerializer, CommentSerializer, PostSerializer, SimpleAuthorSerializer
-from .models import Author, Comment, Post
-from blog import permissions
+from .permissions import DenyUpdateExceptMe, IsOwner, IsPostOwnerOrReadOnly
+from .serializers import AuthorSerializer, CommentSerializer, PostImageSerializer, PostSerializer, PostVideoSerializer, SimpleAuthorSerializer
+from .models import Author, Comment, Post, PostImage, PostVideo
+
 
 
 
 
 class AuthorViewSet(ModelViewSet):
     queryset = Author.objects.select_related('user').prefetch_related('followed_by').all()
-    http_method_names = ['get', 'post', 'put', 'delete', 'option', 'head']
+    serializer_class = AuthorSerializer
+    http_method_names = ['get', 'put', 'option', 'head']
     pagination_class = DefaultPaginationClass
     filter_backends = [SearchFilter, OrderingFilter]
     ordering_fields = ['follower_count', 'following_count']
@@ -31,59 +33,40 @@ class AuthorViewSet(ModelViewSet):
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
             return [AllowAny()]
-        return [IsAuthenticated(), DenyPostDeleteExceptFollowUnfollow(), DenyUpdateExceptMe()]
+        return [IsAuthenticated(), DenyUpdateExceptMe()]
 
-    
-    def get_serializer_class(self):
-        if self.action == 'follow':
-            return SimpleAuthorSerializer
-        return AuthorSerializer
     
     @action(detail=False, methods=['GET', 'PUT'])
     def me(self, request):
-        author = Author.objects.get(user_id=request.user.id)
-        
+        author = request.user.author
+
         if request.method == 'GET':
             serializer = AuthorSerializer(author)
             return Response(serializer.data)
         
         elif request.method == 'PUT':
-            serializer = AuthorSerializer(author, data=request.data)
+            serializer = AuthorSerializer(author, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
-            return Response(serializer.validated_data)
-
+            return Response(serializer.data)
     
-    @action(detail=True, methods=['get'])
-    def followers(self, request, pk):
-        author = self.get_object()
-        paginator = DefaultPaginationClass()
-        result_page = paginator.paginate_queryset(author.followed_by.all(), request)
-        serializer = SimpleAuthorSerializer(result_page, many=True, context={'request': request})
-        return paginator.get_paginated_response(serializer.data)
+    def get_object(self):
+        return self.request.user.author
     
-    @action(detail=True, methods=['GET'])
-    def followings(self, request, pk):
-        author = self.get_object()
-        paginator = DefaultPaginationClass()
-        result_page = paginator.paginate_queryset(author.follows.all(), request)
-        serializer = SimpleAuthorSerializer(result_page, many=True, context={'request': request})
-        return paginator.get_paginated_response(serializer.data)
-        
-    
+   
     
 class PostViewSet(ModelViewSet):
+    queryset = Post.objects.annotate(
+                    comments_count=Count('comments'),
+                    images_count=Count('images'),
+                    videos_count=Count('videos'))
     serializer_class = PostSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     ordering_fields = ['published_date', 'updated_at']
     search_fields = ['title', 'body']
     filterset_class = PostFilter
     
-    def get_queryset(self):
-        author = Author.objects.filter(user_id=self.request.user.id).first()
-        if self.request.method == 'GET':
-            return Post.objects.all()
-        return Post.objects.filter(owner=author)
+   
     
     
     def get_serializer_context(self):
@@ -92,29 +75,24 @@ class PostViewSet(ModelViewSet):
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
             return [AllowAny()]
-        return [IsAuthenticated(), IsTheAuthor()]
+        return [IsAuthenticated(), IsOwner()]
 
 
 
 class CommentViewSet(ModelViewSet):
+    queryset = Comment.objects\
+                        .select_related('owner', 'post', 'parent') \
+                        .prefetch_related('replies').all()
     serializer_class = CommentSerializer
     filter_backends = [OrderingFilter]
     ordering_fields = ['created_at']
-
-    def get_queryset(self):
-        author = Author.objects.filter(user_id=self.request.user.id).first()
-        queryset = Comment.objects\
-                                .select_related('owner', 'post', 'parent') \
-                                .prefetch_related('replies') \
-                                .all()
-        if self.action in ['list', 'retrieve']:
-            return queryset
-        return queryset.filter(owner=author)
+    
+        
     
     def get_permissions(self):
         if self.request.method in SAFE_METHODS:
             return [AllowAny()]
-        return [IsAuthenticated(), IsTheAuthor()]
+        return [IsAuthenticated(), IsOwner()]
     
     def get_serializer_context(self):
         return {'post_id': self.kwargs['post_pk'],
@@ -162,9 +140,46 @@ class FollowViewSet(ViewSet):
                 return Response({'status': 'unfollowed'}, status=status.HTTP_200_OK)
 
             return Response({'status': 'not following'}, status=status.HTTP_404_NOT_FOUND)
-
-
-
     
+    @action(detail=False, methods=['GET'])
+    def followers(self, request):
+        author = Author.objects.get(user=request.user)
+        paginator = DefaultPaginationClass()
+        result_page = paginator.paginate_queryset(author.followed_by.all(), request)
+        serializer = SimpleAuthorSerializer(result_page, many=True, context={'request': request})
+        return paginator.get_paginated_response(serializer.data)
+    
+    @action(detail=False, methods=['GET'])
+    def followings(self, request):
+        author = Author.objects.get(user=request.user)
+        paginator = DefaultPaginationClass()
+        result_page = paginator.paginate_queryset(author.follows.all(), request)
+        serializer = SimpleAuthorSerializer(result_page, many=True, context={'request': request})
+        return paginator.get_paginated_response(serializer.data)
+
+
+class PostImageViewSet(ModelViewSet):
+    serializer_class = PostImageSerializer
+    permission_classes = [IsPostOwnerOrReadOnly]
+    
+    def get_queryset(self):
+        return PostImage.objects.filter(post_id=self.kwargs.get('post_pk'))
+    
+    def get_serializer_context(self):
+        return {'post_id': self.kwargs.get('post_pk')}
+    
+            
+    
+    
+class PostVideoViewSet(ModelViewSet):
+    serializer_class = PostVideoSerializer
+    permission_classes = [IsPostOwnerOrReadOnly]
+    
+    def get_queryset(self):
+        return PostVideo.objects.filter(post_id=self.kwargs.get('post_pk'))
+    
+    def get_serializer_context(self):
+        return {'post_id': self.kwargs.get('post_pk')}
+
     
     

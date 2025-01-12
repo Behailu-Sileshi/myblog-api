@@ -1,6 +1,8 @@
 from rest_framework import serializers
-from .models import Author, Comment, Post
-from django.contrib.auth import get_user_model
+from .models import Author, Comment, Post, PostImage, PostVideo
+
+
+
 
 
 class SimpleAuthorSerializer(serializers.ModelSerializer):
@@ -31,9 +33,18 @@ class AuthorSerializer(serializers.ModelSerializer):
                   'joined_at'
                  ]
         read_only_fields = ['user',
+                            'username',
+                            'first_name',
+                            'last_name',
                             'follower_count',
                             'following_count'
                            ]
+    def update(self, instance, validated_data):
+        if 'image' in validated_data:
+            instance.image = validated_data.get('image', instance.image)
+        instance.bio = validated_data.get('bio', instance.bio)
+        instance.save()
+        return instance
    
 
 class ReplySerializer(serializers.ModelSerializer):
@@ -45,9 +56,8 @@ class ReplySerializer(serializers.ModelSerializer):
         model = Comment 
         fields = ['id', 'owner', 'body', 'created_at']
 
-
 class CommentSerializer(serializers.ModelSerializer):
-    replies = ReplySerializer(many=True)
+    replies = ReplySerializer(many=True, read_only=True)
     created_at = serializers.SerializerMethodField(method_name='get_time')
     
     def get_time(self, comment):
@@ -55,6 +65,7 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = [
+            'id',
             'owner',
             'post',
             'body',
@@ -69,10 +80,31 @@ class CommentSerializer(serializers.ModelSerializer):
         author = Author.objects.get(user_id=self.context['user_id'])
         return Comment.objects.create(owner=author, post_id=self.context['post_id'], **validated_data)
   
+class PostImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PostImage
+        fields = ['id', 'image', 'caption', 'upload_at'] 
+    
+    
+    def create(self, validated_data):
+        return PostImage.objects.create(post_id=self.context.get('post_id'), **validated_data)
+    
+class PostVideoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PostVideo
+        fields = ['id', 'video', 'caption', 'upload_at'] 
+    
+    def create(self, validated_data):
+        return PostVideo.objects.create(post_id=self.context.get('post_id'), **validated_data)
     
     
 class PostSerializer(serializers.ModelSerializer):
-    comments = CommentSerializer(many=True)
+    
+    comments_count = serializers.IntegerField(read_only=True)
+    images_count = serializers.IntegerField(read_only=True)
+    videos_count = serializers.IntegerField(read_only=True)
+    
+   
     class Meta:
         model = Post
         fields = ['id',
@@ -84,7 +116,9 @@ class PostSerializer(serializers.ModelSerializer):
                   'published_date',
                   'created_at',
                   'updated_at',
-                  'comments']
+                  'comments_count',
+                  'images_count',
+                  'videos_count']
         read_only_fields = ['owner']
         
     def create(self, validated_data):
