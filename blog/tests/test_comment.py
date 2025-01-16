@@ -145,9 +145,8 @@ class TestCommentDeletion:
         
         assert response.status_code == status.HTTP_403_FORBIDDEN
         
-    def test_owner_can_delete_comment(self, authenticate, create_comment_instance, delete_comment):
+    def test_owner_can_delete_comment(self, create_comment_instance, delete_comment):
         comment = create_comment_instance()
-        authenticate(user=comment.owner)
         
         response = delete_comment(comment.post.id, comment.id)
         

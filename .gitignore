@@ -1,0 +1,42 @@
+# Django #
+*.log
+*.pot
+*.pyc
+__pycache__
+db.sqlite3
+media
+
+# Environments 
+.env 
+.venv 
+env/ 
+venv/ 
+ENV/ 
+env.bak/ 
+venv.bak/ 
+
+# pyenv 
+.python-version 
+
+# celery 
+celerybeat-schedule.* 
+
+
+
+# Logs and temporary files
+tmp/
+*.sqlite3  # Exclude SQLite database (use only for development)
+
+# Static and media files
+staticfiles/
+media/
+
+# IDE-specific files
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# OS-generated files
+.DS_Store
+Thumbs.db

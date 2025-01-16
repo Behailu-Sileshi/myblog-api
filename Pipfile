@@ -5,9 +5,20 @@ name = "pypi"
 
 [packages]
 django = "*"
-mysqlclient = "*"
+djangorestframework = "*"
+djangorestframework-simplejwt = "*"
+djoser = "*"
+django-filter = "*"
+python-dotenv = "*"
+drf-spectacular = "*"
 
 [dev-packages]
+pytest = "*"
+pytest-django = "*"
+pep8 = "*"
+model-bakery = "*"
+faker = "*"
+pytest-xdist = "*"
 
 [requires]
 python_version = "3.12"

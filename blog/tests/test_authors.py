@@ -3,7 +3,7 @@ from rest_framework import status
 
 @pytest.mark.django_db
 class TestAuthorRetrieval:
-    def test_author_not_found_returns_404(self, api_client):
+    def test_author_not_found_returns_404(self,  api_client):
         response = api_client.get('/blog/authors/33/')
         assert response.status_code == status.HTTP_404_NOT_FOUND
 

@@ -76,19 +76,19 @@ class TestUnfollowAuthor:
 @pytest.mark.django_db
 class TestGetFollow:
     def test_anonymous_user_cannot_view_followers_returns_401(self, api_client):
-        response = api_client.get('/blog/authors/followers/')
+        response = api_client.get('/blog/followers/')
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_authenticated_user_can_view_followers_returns_200(self, api_client, authenticate):
         authenticate()
-        response = api_client.get('/blog/authors/followers/')
+        response = api_client.get('/blog/followers/')
         assert response.status_code == status.HTTP_200_OK
 
     def test_anonymous_user_cannot_view_followings_returns_401(self, api_client):
-        response = api_client.get('/blog/authors/followings/')
+        response = api_client.get('/blog/followings/')
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_authenticated_user_can_view_followings_returns_200(self, api_client, authenticate):
         authenticate()
-        response = api_client.get('/blog/authors/followings/')
+        response = api_client.get('/blog/followings/')
         assert response.status_code == status.HTTP_200_OK

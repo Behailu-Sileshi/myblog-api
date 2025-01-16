@@ -11,6 +11,10 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-^7adji(w17#-q&()#ixetb9)ae6q=^8nlosrkce544hsse@201'
+SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -37,7 +41,13 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'blog'
+    'rest_framework',
+    'djoser',
+    'django_filters',
+    'drf_spectacular',
+    'debug_toolbar',
+    'blog',
+    'users'
 ]
 
 MIDDLEWARE = [
@@ -48,6 +58,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'debug_toolbar.middleware.DebugToolbarMiddleware'
 ]
 
 ROOT_URLCONF = 'myblog.urls'
@@ -75,12 +86,12 @@ WSGI_APPLICATION = 'myblog.wsgi.application'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'myblog',
-        'HOST': 'localhost', 
-        'USER': 'root', 
-        'PASSWORD': 'beya1221#'
+    "default": {
+        "ENGINE": "django.db.backends.mysql",
+        "NAME": os.getenv("NAME"),
+        "HOST": os.getenv("HOST"),
+        "USER": os.getenv("USER"),
+        "PASSWORD": os.getenv("PASSWORD"),
     }
 }
 
@@ -120,10 +131,56 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = 'static/'
+MEDIA_URL = 'media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-AUTH_USER_MODEL = 'blog.User'
+AUTH_USER_MODEL = 'users.User'
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Blog API',
+    'DESCRIPTION': """  Welcome to the Myblog API documentation: 
+                        The MyBlog API provides a robust and flexible interface for interacting with a blogging platform.
+                        It is designed to enable users to manage blog posts, comments, and authorship features.
+                        Built using Django and Django REST Framework (DRF), the API adheres to RESTful principles,
+                        making it intuitive and scalable for both developers and end-users.
+
+        Key Features:
+
+- Author Management: Allows users to view and update author profiles,
+                    with robust permissions to ensure privacy and security.
+- Post Management: Facilitates the creation, retrieval, updating, and deletion of blog posts.
+                    Includes features to manage multimedia content such as images and videos associated 
+                    with posts.
+- Commenting System: Supports a hierarchical commenting system, 
+                        enabling users to comment on posts and reply to other comments.
+- Follow System: Implements functionality for users to follow and unfollow authors,
+                fostering a community-driven environment.
+Use this documentation to explore the available endpoints and interact with them directly.
+Each endpoint is described with details on request parameters, response types, and sample payloads. """
+,
+    'VERSION': '1.0.0',
+}
+
+DJOSER = {
+    "SERIALIZERS": {
+        "user_create": "users.serializers.UserCreateSerializer",
+        "current_user": "users.serializers.UserSerializer",
+    }
+}
+
+SIMPLE_JWT = {
+    "AUTH_HEADER_TYPES": ("JWT",),
+}
+

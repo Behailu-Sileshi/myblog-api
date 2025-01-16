@@ -29,6 +29,7 @@ class AuthorViewSet(ModelViewSet):
     ordering_fields = ['follower_count', 'following_count']
     search_fields = ['user__username', 'user__first_name', 'user__last_name']
    
+   
 
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
@@ -50,8 +51,6 @@ class AuthorViewSet(ModelViewSet):
             serializer.save()
             return Response(serializer.data)
     
-    def get_object(self):
-        return self.request.user.author
     
    
     
@@ -141,7 +140,7 @@ class FollowViewSet(ViewSet):
 
             return Response({'status': 'not following'}, status=status.HTTP_404_NOT_FOUND)
     
-    @action(detail=False, methods=['GET'])
+    @action(detail=False, methods=['GET'], permission_classes=[IsAuthenticated])
     def followers(self, request):
         author = Author.objects.get(user=request.user)
         paginator = DefaultPaginationClass()
@@ -149,7 +148,7 @@ class FollowViewSet(ViewSet):
         serializer = SimpleAuthorSerializer(result_page, many=True, context={'request': request})
         return paginator.get_paginated_response(serializer.data)
     
-    @action(detail=False, methods=['GET'])
+    @action(detail=False, methods=['GET'], permission_classes=[IsAuthenticated])
     def followings(self, request):
         author = Author.objects.get(user=request.user)
         paginator = DefaultPaginationClass()

@@ -75,14 +75,14 @@ class TestPostUpdate:
         response = update_post(post.id, {'title': ''})
         assert response.status_code == status.HTTP_400_BAD_REQUEST
     
-    def test_non_owner_cannot_update_post_returns_403(self, create_post_object, authenticate, update_post):
-        post = create_post_object()
+    def test_non_owner_cannot_update_post_returns_403(self, create_post_instance, authenticate, update_post):
+        post = create_post_instance()
         authenticate()
         response = update_post(post.id, {'title': 'Updated Title'})
         assert response.status_code == status.HTTP_403_FORBIDDEN
     
-    def test_valid_data_updates_post_returns_200(self, create_post_object, update_post):
-        post = create_post_object()
+    def test_valid_data_updates_post_returns_200(self, create_post_instance, update_post):
+        post = create_post_instance()
         data = {'title': 'Updated Title', 'body': post.body}
         response = update_post(post.id, data)
         assert response.status_code == status.HTTP_200_OK
@@ -99,13 +99,13 @@ class TestPostDeletion:
         response = delete_post(999)
         assert response.status_code == status.HTTP_404_NOT_FOUND
     
-    def test_non_owner_cannot_delete_post_return_403(self, create_post_object, authenticate, delete_post):
-        post = create_post_object()
+    def test_non_owner_cannot_delete_post_return_403(self, create_post_instance, authenticate, delete_post):
+        post = create_post_instance()
         authenticate()
         response = delete_post(post.id)
         assert response.status_code == status.HTTP_403_FORBIDDEN
     
-    def test_owner_can_delete_post_returns_204(self, create_post_object, delete_post):
-        post = create_post_object()
+    def test_owner_can_delete_post_returns_204(self, create_post_instance, delete_post):
+        post = create_post_instance()
         response = delete_post(post.id)
         assert response.status_code == status.HTTP_204_NO_CONTENT

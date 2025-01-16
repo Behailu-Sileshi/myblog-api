@@ -75,7 +75,6 @@ class TestPostVideoCreation:
 
     def test_valid_data_creates_video_returns_201(self, authenticate, create_post_instance, upload_post_video, create_upload_video):
         post = create_post_instance()
-        authenticate()
         upload_video = create_upload_video()
         response = upload_post_video(post.id, {"video": upload_video})
         assert response.status_code == status.HTTP_201_CREATED
